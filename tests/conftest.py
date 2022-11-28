@@ -166,6 +166,7 @@ class FSAppLayoutFixture(object):
         commit=True,
         push=True,
         add_exec=False,
+        repo_full_path=None
     ):
         if repo_name not in self._repos:
             raise RuntimeError("repo {0} not found".format(repo_name))
@@ -174,7 +175,10 @@ class FSAppLayoutFixture(object):
                 f"Unsupported repo type: " f"{self._repos[repo_name]['type']}"
             )
 
-        path = os.path.join(self._repos[repo_name]["path"], file_relative_path)
+        if repo_full_path is None:
+            repo_full_path = self._repos[repo_name]["path"]
+
+        path = os.path.join(repo_full_path, file_relative_path)
         dir_path = os.path.dirname(path)
         pathlib.Path(dir_path).mkdir(parents=True, exist_ok=True)
 
@@ -188,7 +192,7 @@ class FSAppLayoutFixture(object):
         if not commit:
             return
 
-        client = Repo(self._repos[repo_name]["path"])
+        client = Repo(repo_full_path)
         client.index.add([path])
         client.index.commit("Added file {0}".format(path))
         self._repos[repo_name]["changesets"] = {

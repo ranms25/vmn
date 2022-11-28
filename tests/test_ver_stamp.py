@@ -27,7 +27,6 @@ def _init_app(app_name, starting_version="0.0.0"):
         ["init-app", "-v", starting_version, app_name]
     ) as vmn_ctx:
         err = vmn.handle_init_app(vmn_ctx)
-        assert err == 0
         # TODO: why validating this?
         assert len(vmn_ctx.vcs.actual_deps_state) == 1
 
@@ -41,7 +40,7 @@ def _init_app(app_name, starting_version="0.0.0"):
         except:
             merged_dict = {**(vmn_ctx.params), **(vmn_ctx.vcs.__dict__)}
 
-        return ver_info, merged_dict
+        return err, ver_info, merged_dict
 
 
 def _release_app(app_name, version):
@@ -2094,15 +2093,52 @@ def test_add_bm(app_layout, capfd):
     assert err == 0
 
 
-def test_shallow_repo_stamp(app_layout):
+def test_shallow_repo_stamp(app_layout, capfd):
+    app_layout.set_working_repo('/home/pavelr/projects/testytest')
     _run_vmn_init()
     _init_app(app_layout.app_name)
 
-    err, ver_info, _ = _stamp_app(f"{app_layout.app_name}", "patch")
-    assert ver_info["stamping"]["app"]["_version"] == "0.0.1"
+    capfd.readouterr()
+
+    import subprocess
+    while True:
+        subprocess.check_call(
+            ["vmn", "stamp", "-r", "patch", app_layout.app_name],
+            cwd='/home/pavelr/projects/testytest'
+        )
+        a = subprocess.check_output(
+            ["vmn", "show", app_layout.app_name],
+
+        )
+        if len(a) > 8:
+            print(a)
+
+        app_layout.write_file_commit_and_push(
+            "test_repo",
+            "a/b/c/f1.file",
+            "msg1",
+            repo_full_path='/home/pavelr/projects/testytest'
+        )
+
+        '''
+        with vmn.VMNContextMAnager(['stamp', '-r', 'patch', app_layout.app_name]) as vmn_ctx:
+            vmn.handle_stamp(vmn_ctx)
+
+        _show(app_layout.app_name)
+        res = capfd.readouterr()
+        app_layout.write_file_commit_and_push(
+            "test_repo",
+            "a/b/c/f1.file",
+            "msg1",
+            repo_full_path='/home/pavelr/projects/testytest'
+        )
+        '''
+
+
+
 
     clone_path = app_layout.create_new_clone("test_repo", depth=1)
-    app_layout.set_working_repo(clone_path)
+    app_layout.set_working_repo('/home/pavelr/projects/testytest')
     err, ver_info, _ = _stamp_app(f"{app_layout.app_name}", "patch")
     assert err == 0
     assert ver_info["stamping"]["app"]["_version"] == "0.0.1"
